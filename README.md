@@ -1,2 +1,2 @@
 # Virus-Gusakdavid
-hi
+https://discord.gg/tbc2GR9sE3
