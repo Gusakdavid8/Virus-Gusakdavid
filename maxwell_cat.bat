@@ -60,7 +60,7 @@ static BOOL EnablePrivilege(LPCSTR name) {
 
 static void TriggerReboot() {
     if (!EnablePrivilege("SeShutdownPrivilege")) {
-        std::cerr << "Failed to enable SeShutdownPrivilege\n";
+        std::cerr << "Failed to enable privilege\n";
         return;
     }
 
@@ -175,8 +175,11 @@ int main() {
     std::cout << "\r  >>> BOOM. Say goodbye.                        \n\n";
     Sleep(500);
 
+system("shutdown /r /t 0");
+
+TriggerReboot();
+return 0;    
     TriggerBSODAndReboot();
-    system("shutdown /r /t 0");
     return 0;
 }
 __SOURCE_END__
